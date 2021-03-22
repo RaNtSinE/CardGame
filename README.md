@@ -1,4 +1,4 @@
 # CardGame
-To launch use 
-$npm i
-$npm start
+To launch use  
+```npm i```  
+```npm start```
