@@ -1,24 +1,33 @@
+//import libs
 import React from "react"
 import {Container, Text} from '@inlet/react-pixi'
 import * as PIXI from 'pixi.js'
-import cards from "./loadCards";
-import Card from "./Card"
 import { default as PIXI_SOUND } from 'pixi-sound'
+//import components
+import Card from "./Card"
+//import files
+import cards from "./loadCards";
 import prepare from './sound/prepare.mp3'
 import start from './sound/start.mp3'
 import win from "./sound/win.mp3";
 
-const prepareSound = PIXI_SOUND.sound.Sound.from({url: prepare, volume: 0.1})
-const startSound = PIXI_SOUND.sound.Sound.from({url: start, volume: 0.1})
-const winSound = PIXI_SOUND.sound.Sound.from({url: win, volume: 0.3})
-
+//component UsableCards
 class UsableCards extends React.Component {
     constructor(props) {
         super(props);
+        //creating a lot of states:
+        //lastPick and preLastPick needs to compare 2 opened cards
+        //needToClose need to check which cards need to close
+        //lastId need to check if there was an attempt to open the same card twice
+        //countPick need to counting opened cards
+        //interactive true need to determine interactivity of all cards
+        //point need to counting pairs of card
+        //prepare and start is game start states
+        //startTime need to calculate time from the start of the game
+        //timer is a state which use to show time
         this.state = {
             lastPick: null,
             preLastPick: null,
-            needToBlock: [null, null],
             needToClose: [null, null],
             lastId: null,
             countPick: 0,
@@ -28,6 +37,8 @@ class UsableCards extends React.Component {
             start: true,
             startTime: new Date(),
             timer: "00:00:00",
+            lastWidth: this.props.width,
+            lastHeight: this.props.height
         }
 
         this.handlePickCard = this.handlePickCard.bind(this)
@@ -35,6 +46,12 @@ class UsableCards extends React.Component {
         this.removeInteractive = this.removeInteractive.bind(this)
         this.checkWin = this.checkWin.bind(this)
 
+        //creating sounds
+        this.prepareSound = PIXI_SOUND.sound.Sound.from({url: prepare, volume: 0.1})
+        this.startSound = PIXI_SOUND.sound.Sound.from({url: start, volume: 0.1})
+        this.winSound = PIXI_SOUND.sound.Sound.from({url: win, volume: 0.3})
+
+        //creating styles for text
         this.style = new PIXI.TextStyle({
             fontFamily: 'Arial',
             fontSize: 22,
@@ -47,12 +64,15 @@ class UsableCards extends React.Component {
             fill: '#FFFFFF'
         })
 
+        //creating timer for setInterval
         this.timerId = null
+
     }
 
+    //method for calculate time from the start of the game
     tick() {
         let timer = new Date() - this.state.startTime
-        let minutes = 0
+        let minutes
         let seconds = Math.round(timer / 1000)
         minutes = Math.floor(seconds / 60)
 
@@ -80,19 +100,19 @@ class UsableCards extends React.Component {
         this.setState({interactive: false})
     }
 
+    //method for victory check
     checkWin() {
+        //if points = 8, clear timer, play win sound, "nullify" states and restart game
         if(this.state.points === 8)
         {
             clearInterval(this.timerId);
-            winSound.play()
+            this.winSound.play()
             setTimeout(() => {
                 this.state.points = 0
-                console.log("win")
                 this.props.restart()
                 this.setState({
                     lastPick: null,
                     preLastPick: null,
-                    needToBlock: [null, null],
                     needToClose: [null, null],
                     countPick: 0,
                     interactive: true,
@@ -106,23 +126,24 @@ class UsableCards extends React.Component {
         return false
     }
 
+    //card selection handler
     handlePickCard(currentPick, currentId) {
-        console.log("this id " + currentId + " " + this.state.currentId + " " + this.state.countPick)
         this.setState({countPick: this.state.countPick + 1})
+        //change countPick 3 on 1 for the only 2 picks exist
         if (this.state.countPick === 3)
         {
-            this.setState({countPick: 1, needToBlock: [null, null],
-                needToClose: [null, null], lastPick: null,
+            this.setState({
+                countPick: 1,
+                needToClose: [null, null],
+                lastPick: null,
                 preLastPick: null,
-                block: null,
-                close: null,
                 currentId: null
             })
         }
 
+        //if choosing another card: compare two cards and determining what to do with them
         if (this.state.currentId !== currentId){
             this.setState({currentId: currentId})
-            console.log(this.state.countPick)
 
             let lastPick = this.state.lastPick
             this.state.lastPick = currentPick
@@ -130,21 +151,15 @@ class UsableCards extends React.Component {
             if (this.state.countPick === 2)
             {
                 if (this.state.lastPick === lastPick) {
-
-                    this.setState({needToBlock: [lastPick, this.state.lastPick]})
                     this.state.points = this.state.points + 1
-
-                    console.log("points" + this.state.points)
                     return true
                 } else if (this.state.lastPick !== lastPick){
-                    console.log(this.state.needToClose)
                     this.setState({needToClose: [lastPick, this.state.lastPick]})
                     return false
                 }
             }
-            console.log(this.state.needToClose)
             return false
-        } else {
+        } else {                                                //if choosing same card
             this.setState({currentId: currentId})
             this.state.countPick = this.state.countPick - 1
             return true
@@ -152,12 +167,13 @@ class UsableCards extends React.Component {
 
     }
 
-
     render() {
 
+        //variables for calculate position cards
         let floor = 0;
         let xCount = 0;
 
+        //creating cardDesk with 16 components Card
         const cardDesk = this.props.usableCards.map((card, index) => {
                 if (index % 4 === 0)
                 {
@@ -166,68 +182,80 @@ class UsableCards extends React.Component {
                 }
 
                 xCount++
+                //closing necessary cards
                 if (this.state.needToClose[0] === card || this.state.needToClose[1] === card)
                 {
-                    console.log("close")
-                    console.log(this.state.needToClose[0])
-                    console.log(this.state.needToClose[1])
 
                     return (
                         <Card onPickCard={this.handlePickCard} backInteractive={this.backInteractive}
-                              needToClose={true} interactive={this.state.interactive} checkWin={this.checkWin}
+                              needToClose={true} interactive={this.state.interactive}
+                              checkWin={this.checkWin}
                               key={index} card={card} xCount={xCount} countPick={this.state.countPick}
                               floor={floor} back={cards[0]} id={index}
+                              width={this.props.width} height={this.props.height}
                         />
                     )
                 }
+                //rendering interactive cards
                 if (this.state.interactive)
                 {
+                    //rendering cards in prepare state
                     if (this.state.prepare === true)
                     {
                         return (
                             <Card onPickCard={this.handlePickCard} backInteractive={this.backInteractive}
-                                  interactive={false} removeInteractive={this.removeInteractive} checkWin={this.checkWin}
+                                  interactive={false} removeInteractive={this.removeInteractive}
+                                  checkWin={this.checkWin}
                                   key={index} card={card} xCount={xCount} needToClose={false} backScale={0}
                                   countPick={this.state.countPick}
                                   floor={floor} back={card} id={index}
+                                  width={this.props.width} height={this.props.height}
                             />
                         )
-                    } else if (this.state.start === true) {
-                        console.log("firstAnimation")
+                    } else if (this.state.start === true) {         //rendering cards on start state
 
                         return (
                             <Card onPickCard={this.handlePickCard} backInteractive={this.backInteractive}
-                                  interactive={true} removeInteractive={this.removeInteractive} checkWin={this.checkWin}
+                                  interactive={true} removeInteractive={this.removeInteractive}
+                                  checkWin={this.checkWin}
                                   key={index} card={card} xCount={xCount} needToClose={false}
                                   countPick={this.state.countPick} firstAnimation={true}
                                   floor={floor} back={cards[0]} id={index}
+                                  width={this.props.width} height={this.props.height}
                             />
                         )
-                    } else {
+                    } else {            //standard rendering interactive cards
                         return (
                             <Card onPickCard={this.handlePickCard} backInteractive={this.backInteractive}
-                                  interactive={true} removeInteractive={this.removeInteractive} checkWin={this.checkWin}
+                                  interactive={true} removeInteractive={this.removeInteractive}
+                                  checkWin={this.checkWin}
                                   key={index} card={card} xCount={xCount} needToClose={false}
                                   countPick={this.state.countPick}
                                   floor={floor} back={cards[0]} id={index}
+                                  width={this.props.width} height={this.props.height}
                             />
                         )
                     }
-                } else {
-                    console.log(this.state.interactive)
+                } else {        //rendering not interactive cards
                     return (
                         <Card onPickCard={this.handlePickCard} backInteractive={this.backInteractive}
-                              interactive={false} removeInteractive={this.removeInteractive} checkWin={this.checkWin}
+                              interactive={false} removeInteractive={this.removeInteractive}
+                              checkWin={this.checkWin}
                               key={index} card={card} xCount={xCount} needToClose={false}
                               countPick={this.state.countPick}
                               floor={floor} back={cards[0]} id={index}
+                              width={this.props.width} height={this.props.height}
                         />
                     )
                 }
             }
         )
+        //changing prepare and start states
         if (this.state.prepare === true) {
-            prepareSound.play()
+            if(this.state.lastWidth === this.props.width)
+                this.prepareSound.play()
+            else
+                this.state.lastWidth = this.props.width
             setTimeout(() => {
                 this.setState({prepare: false,
                     start: true,
@@ -236,14 +264,13 @@ class UsableCards extends React.Component {
                 {
                     this.setState({startTime: new Date()})
                     this.timerId = setInterval(() => this.tick(),10);
-                    startSound.play()
+                    this.startSound.play()
                     this.setState({start: false})
                 }
             }, 5000)
         }
 
-
-
+        //game win then rendering cardDesk with victory message
         if (this.state.points === 8)
         {
             return(
@@ -254,6 +281,7 @@ class UsableCards extends React.Component {
                 </Container>
             )
         }
+        //standard rendering cardDesk and timer
         return(
             <Container>
                 {cardDesk}

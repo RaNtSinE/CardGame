@@ -1,21 +1,33 @@
+//import libs
 import React from "react"
-import {Container, Sprite, withPixiApp} from '@inlet/react-pixi'
+import {Container, Sprite} from '@inlet/react-pixi'
 import { default as PIXI_SOUND } from 'pixi-sound'
+//import files
 import sound from './sound/open.mp3'
-import winSound from "./sound/win.mp3";
 
+//component Card
 class Card extends React.Component {
     constructor(props) {
         super(props);
+
+        //a lot of states:
+        //backScale is scale for back side of card
+        //frontScale is scale for front side of card
+        //positionBack is position for back side of card
+        //positionFront is position for front side of card
+        //didClosed need to close card only one time for one close animation
+        //animationFront is state for animation front side of card
+        //animationBack is state for animation back side of card
+        //animationOpen is state for animation open card
+        //animationClose is state for animation close card
+        //interactive defines interactive of card
+        //current time need to calculate delta of time
         this.state = {
-            currentCard: this.props.card,
-            needToClose: this.props.needToClose,
             backScale: {x: 0.8,y: 0.8},
             frontScale: {x: 0, y: 0.8},
             positionBack: {x: 150 * (this.props.xCount - 1) + 120, y: 20 + (this.props.floor - 1) * 140},
             positionFront: {x: 150 * (this.props.xCount - 1) + 120, y: 20 + (this.props.floor - 1) * 140},
             didClosed: false,
-            open: true,
             animationFront: false,
             animationBack: false,
             animationOpen: false,
@@ -23,7 +35,6 @@ class Card extends React.Component {
             interactive: this.props.interactive,
             currentTime: Date.now()
         }
-        this.id = this.props.id
 
         this.handlePickCard = this.handlePickCard.bind(this)
         this.backInteractive = this.backInteractive.bind(this)
@@ -31,19 +42,17 @@ class Card extends React.Component {
         this.animationOpen = this.animationOpen.bind(this)
         this.animationClose = this.animationClose.bind(this)
 
+        //create sound
         this.sound = PIXI_SOUND.sound.Sound.from({url: sound, volume: 0.3})
     }
 
 
     handlePickCard(card, id) {
-
         if(this.props.onPickCard(card, id))
         {
             this.backInteractive()
-            this.setState({backScale: {x: 0, y: 0.8},
-                // frontScale: {x: 0.8, y: 0.8},
-                // positionBack: {x: 150 * (this.props.xCount - 1) + 120, y: 20 + (this.props.floor - 1) * 140},
-                // positionFront: {x: 150 * (this.props.xCount - 1) + 120 + 40, y: 20 + (this.props.floor - 1) * 140},
+            this.setState({
+                backScale: {x: 0, y: 0.8},
                 interactive: this.props.interactive})
         }
 
@@ -66,6 +75,7 @@ class Card extends React.Component {
         this.props.removeInteractive();
     }
 
+    //change states before rendering
     static getDerivedStateFromProps(props, state) {
         if(props.needToClose)
         {
@@ -81,10 +91,7 @@ class Card extends React.Component {
             if (!state.didClosed)
             {
                 return {
-                    // backScale: {x: 0.8, y: 0.8},
-                    // frontScale: {x: 0, y: 0.8},
                     positionBack: {x: posBack, y: 20 + (props.floor - 1) * 140},
-                    // positionFront: {x: 150 * (props.xCount - 1) + 120 + 40, y: 20 + (props.floor - 1) * 140},
                     animationClose: true,
                     animationFront: true,
                     didClosed: true,
@@ -94,7 +101,6 @@ class Card extends React.Component {
             }
         } else if (props.backScale === 0)
         {
-            console.log("checkWin " + true)
             return {
                 backScale: {x: 0, y: 0.8},
                 frontScale: {x: 0.8, y: 0.8},
@@ -105,7 +111,6 @@ class Card extends React.Component {
             }
         } else if (props.firstAnimation === true)
         {
-            console.log("firstAnimation true")
             return {
                 currentTime: Date.now(),
                 animationClose: true,
@@ -117,6 +122,7 @@ class Card extends React.Component {
         }
     }
 
+    //method for animation open card
     animationOpen() {
         if(this.state.animationBack === true && this.state.animationOpen === true)
         {
@@ -167,12 +173,12 @@ class Card extends React.Component {
         }
     }
 
+    //method for animation close card
     animationClose() {
         if(this.state.animationBack === true  && this.state.animationClose === true)
         {
             let current = Date.now(),
                 delta = current - this.state.currentTime
-            console.log(current + " " + this.state.currentTime + " " + delta)
             this.setState({backScale: {x: this.state.backScale.x + 0.003 * delta, y: 0.8},
                 positionBack:
                     {x: this.state.positionBack.x - 0.15 * delta,
@@ -196,7 +202,6 @@ class Card extends React.Component {
         {
             let current = Date.now(),
                 delta = current - this.state.currentTime
-            console.log(current + " " + this.state.currentTime + " " + delta)
             this.setState({
                 frontScale: {x: this.state.frontScale.x - 0.003 * delta, y: 0.8},
                 positionFront: {x: this.state.positionFront.x + 0.15 * delta,
@@ -217,10 +222,12 @@ class Card extends React.Component {
         }
     }
 
+
     render() {
         setTimeout(this.animationOpen, 10)
         setTimeout(this.animationClose, 10)
 
+        //render double-sided card first front then back
         return(
             <Container>
                 <Sprite image={this.props.card}
@@ -242,6 +249,7 @@ class Card extends React.Component {
                         interactive={this.state.interactive}
                         scale={this.state.backScale} mipmap={true}
                         pointerdown={() => {
+                            //if click on the card
                             if (this.state.interactive === true && !this.state.animationClose)
                             {
                                 this.sound.play();
